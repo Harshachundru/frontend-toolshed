@@ -1,0 +1,9 @@
+/* Task-list checkboxes from markdown-it-task-lists */
+.vp-doc .task-list-item {
+  list-style: none;
+}
+
+.vp-doc .task-list-item input {
+  margin: 0 0.5em 0 -1.4em;
+  vertical-align: middle;
+}

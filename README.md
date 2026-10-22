@@ -30,7 +30,7 @@ The workflow in `.github/workflows/deploy.yml` builds the site and publishes it 
 3. In the repository, open **Settings → Pages** and set **Source** to **GitHub Actions**.
 4. Open the **Actions** tab and wait for **Deploy to GitHub Pages** to finish. If it ran before step 3 and failed, click **Re-run all jobs**.
 
-The site is then live at `https://<your-username>.github.io/frontend-interview-guide/`. After that, every `git push` updates it within a minute or two.
+The site is then live at `https://<Harshachundru>.github.io/frontend-interview-guide/`. After that, every `git push` updates it within a minute or two.
 
 ## Check a build before you push
 

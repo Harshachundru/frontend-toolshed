@@ -7,3 +7,94 @@
   margin: 0 0.5em 0 -1.4em;
   vertical-align: middle;
 }
+
+/* Shared styles for the interactive diagrams on the core concepts page */
+.cc-demo {
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+}
+
+.cc-demo-title {
+  margin-bottom: 2px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cc-demo-hint {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+}
+
+.cc-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.cc-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+  line-height: 1.6;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.cc-btn:hover:not(:disabled) {
+  border-color: var(--vp-c-brand-1);
+}
+
+.cc-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cc-btn[aria-pressed='true'] {
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+
+.cc-select {
+  margin-left: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+}
+
+.cc-note {
+  padding: 8px 12px;
+  border-left: 3px solid var(--vp-c-brand-1);
+  border-radius: 4px;
+  background: var(--vp-c-bg);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.cc-svg {
+  width: 100%;
+  height: auto;
+  font-family: var(--vp-font-family-base);
+}
+
+.cc-ink { fill: var(--vp-c-text-1); }
+.cc-quiet { fill: var(--vp-c-text-2); }
+.cc-box { fill: var(--vp-c-bg); stroke: var(--vp-c-text-3); }
+.cc-box-on { fill: var(--vp-c-brand-soft); stroke: var(--vp-c-brand-1); }
+.cc-stroke-edge { stroke: var(--vp-c-text-3); }
+.cc-stroke-faint { stroke: var(--vp-c-divider); }
+.cc-stroke-brand { stroke: var(--vp-c-brand-1); }
+.cc-fill-edge { fill: var(--vp-c-text-3); }
+.cc-fill-brand { fill: var(--vp-c-brand-1); }

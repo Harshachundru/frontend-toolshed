@@ -4,7 +4,14 @@ Beyond syntax, a lead is asking one question: can I trust this person with a fea
 
 ## 10.1 Frontend system design
 
-Senior rounds often include a 45-minute design question such as "design an autocomplete" or "design a news feed". Use a fixed framework so you never freeze. A good acronym is **RADIO**:
+Frontend system design is planning a feature or app before writing code: its parts, its data, and how it stays fast and reliable.
+
+### The problem: freezing on an open question
+
+- Senior rounds often include a 45-minute question such as "design an autocomplete" or "design a news feed".
+- With no structure, people jump into code, forget accessibility, or run out of time before the interesting part.
+
+### The fix: the same five steps every time (RADIO)
 
 1. **Requirements** (5 min): functional (what it does) and non-functional (devices, scale, offline, accessibility, internationalisation, performance targets). Ask questions; write the answers down.
 2. **Architecture** (5 to 10 min): the main components and how they talk: UI components, state store, API layer, cache, server.
@@ -12,7 +19,7 @@ Senior rounds often include a 45-minute design question such as "design an autoc
 4. **Interface** (5 to 10 min): API contracts between client and server (REST or GraphQL, pagination style, error format) and component props.
 5. **Optimisations and deep dives** (15 min): performance, accessibility, security, error handling, testing, monitoring. This is where seniority shows.
 
-**Worked example: autocomplete (typeahead)**
+### Worked example: autocomplete (typeahead)
 
 - Requirements: suggestions as the user types, keyboard navigation, mobile, fast, results for 10M items.
 - Architecture: `Input` → debounced query → cache lookup → API → `ResultsList` in a popover.
@@ -30,14 +37,26 @@ Senior rounds often include a 45-minute design question such as "design an autoc
 
 ## 10.2 API integration and error handling
 
-- A typed API client in one place with base URL, auth headers, token refresh, timeouts and error normalisation.
-- Every async UI has four states: loading, empty, error, success. Design all four.
-- Retries with exponential backoff for safe requests; idempotency keys for payments.
-- Handle 401 (re-authenticate), 403 (show a permission message), 429 (back off), offline (queue or tell the user).
+The happy path is easy. This section is about what happens when the network is slow, the server says no, or the user goes offline.
+
+- **One typed API client:** Base URL, auth headers, token refresh, timeouts and error handling live in one place, not in every component.
+- **Four states for every async screen:** Loading, empty, error and success. Design all four, because bugs hide in the last three.
+- **Retries:** Retry safe requests with exponential backoff, waiting longer each time. For payments, send an idempotency key, so a retried request can't charge twice.
+- **Status codes:**
+  - **401:** Not logged in. Re-authenticate.
+  - **403:** Logged in but not allowed. Show a permission message.
+  - **429:** Too many requests. Back off.
+  - **Offline:** Queue the action, or tell the user.
 
 ## 10.3 Testing strategy
 
-Explain the trade-off you would choose: integration tests with React Testing Library and MSW for most features, unit tests for pure logic, a handful of Playwright tests for critical journeys, and visual tests for the design system. Tests run in CI on every pull request and block merges.
+- **Most features:** Integration tests with React Testing Library and MSW.
+- **Pure logic:** Unit tests.
+- **Critical journeys:** A handful of Playwright tests.
+- **The design system:** Visual tests.
+- **Enforcement:** Tests run in CI on every pull request and block the merge.
+
+The [testing page](/testing) explains why.
 
 ## 10.4 Code quality and code review
 
@@ -48,15 +67,23 @@ Explain the trade-off you would choose: integration tests with React Testing Lib
 
 ## 10.5 Debugging production issues
 
-1. Reproduce: get the browser, steps, account and logs. Use session replay if available.
-2. Contain: roll back or turn off the feature flag if users are hurt.
-3. Investigate: Sentry stack traces with source maps, network tab, React DevTools, `git bisect` to find the change.
-4. Fix with a test that fails before the fix.
-5. Follow up: a blameless postmortem, monitoring or lint rules so it cannot recur.
+1. **Reproduce:** Get the browser, steps, account and logs. Use session replay if available.
+2. **Contain:** Roll back, or turn off the feature flag, if users are hurt. Stop the damage before you find the cause.
+3. **Investigate:** Sentry stack traces with source maps, the network tab, React DevTools, and `git bisect` to find the change that broke it.
+4. **Fix:** With a test that fails before the fix and passes after.
+5. **Follow up:** A blameless postmortem, plus monitoring or a lint rule so it can't happen again.
 
 ## 10.6 CI/CD, tooling and delivery
 
-Vite or Next.js builds, environment variables, preview deployments per pull request (Vercel, Netlify), feature flags (LaunchDarkly, Unleash) for safe rollout, trunk-based development, semantic versioning, Docker for consistent environments, and monitoring after release.
+- **Builds:** Vite or Next.js, with configuration from environment variables.
+- **Preview deployments:** A live copy of each pull request (Vercel, Netlify), so reviewers can click through it.
+- **Feature flags:** Ship code switched off, then turn it on gradually (LaunchDarkly, Unleash).
+- **Trunk-based development:** Small branches merged into `main` often.
+- **Semantic versioning:** `major.minor.patch`, where a major bump means a breaking change.
+- **Docker:** The same environment everywhere.
+- **Monitoring after release.**
+
+The [CI/CD page](/cicd-deployment) covers this in depth.
 
 ## 10.7 Collaboration and ownership
 

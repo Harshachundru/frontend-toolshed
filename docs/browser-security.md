@@ -4,18 +4,30 @@ This section covers what happens between typing a URL and seeing a page, how the
 
 ## 8.1 What happens when you type a URL
 
-1. The browser parses the URL and checks its caches (HSTS list, DNS cache, HTTP cache, service worker).
-2. **DNS** lookup resolves the domain to an IP address.
-3. **TCP** handshake (or QUIC for HTTP/3), then a **TLS** handshake for HTTPS.
-4. The browser sends an **HTTP request**; the server (often via a CDN) returns a response.
-5. The browser parses **HTML into the DOM**, and **CSS into the CSSOM**. Scripts without `defer`/`async` block parsing.
-6. DOM + CSSOM form the **render tree** (visible elements only).
-7. **Layout** calculates geometry; **paint** fills pixels; **composite** layers onto the screen.
-8. JavaScript runs, may fetch more data, and may change the DOM, triggering more layout and paint.
+The short version: find the server, open a secure line to it, ask for the page, then turn the reply into pixels.
 
-This is the **critical rendering path**. Shorten it by inlining critical CSS, deferring scripts and reducing round trips.
+### Find the server and connect
+
+1. **Check the caches:** The browser checks whether it already knows the answer: the HSTS list, DNS cache, HTTP cache and any service worker.
+2. **DNS lookup:** It turns the domain name, such as `example.com`, into an IP address, like looking up a phone number.
+3. **Connect:** A TCP handshake (or QUIC for HTTP/3) opens a connection. A TLS handshake then encrypts it for HTTPS.
+
+### Ask for the page
+
+4. **HTTP request:** The browser asks for the page. The server, often through a CDN, sends back the HTML.
+
+### Turn the reply into pixels
+
+5. **Parse:** HTML becomes the DOM and CSS becomes the CSSOM. A script without `defer` or `async` pauses this.
+6. **Render tree:** The DOM and CSSOM combine into the visible elements with their styles.
+7. **Layout, paint, composite:** Work out sizes and positions, fill in the pixels, and stack the layers on screen.
+8. **JavaScript runs:** It may fetch more data and change the page, which triggers more layout and paint.
+
+Steps 5 to 7 are the [critical rendering path](/core-concepts#_1-critical-rendering-path). Shorten it by inlining critical CSS, deferring scripts and cutting round trips.
 
 ## 8.2 Client-side storage
+
+The browser offers four places to keep data. The big difference is whether the data is sent to the server automatically, and whether JavaScript can read it.
 
 |  | Cookies | `localStorage` | `sessionStorage` | IndexedDB |
 | --- | --- | --- | --- | --- |
@@ -26,9 +38,11 @@ This is the **critical rendering path**. Shorten it by inlining critical CSS, de
 | Scope | Domain and path | Origin | Origin and tab | Origin |
 | Use for | Sessions, auth | Preferences, drafts | One-tab wizard state | Offline data, large caches |
 
-Never store secrets or long-lived tokens in `localStorage`: any XSS can read it.
+**The rule:** Never store secrets or long-lived tokens in `localStorage`. Any injected script (XSS, section 8.5) can read it.
 
 ## 8.3 Cookies in depth
+
+A cookie is a small piece of data the server asks the browser to keep and send back on every request to that site. Attributes on the cookie control who can read it and when it is sent.
 
 ```http
 Set-Cookie: session=abc123; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=3600
@@ -45,19 +59,46 @@ Set-Cookie: session=abc123; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=3600
 | `Expires`, `Max-Age` | Lifetime; without them it is a session cookie |
 | `__Host-` prefix | Forces `Secure`, `Path=/` and no `Domain`, so subdomains cannot overwrite it |
 
-**First-party vs third-party cookies**: first-party belong to the site in the address bar; third-party belong to embedded domains (ads, trackers) and are increasingly blocked by Safari, Firefox and partially by Chrome. **GDPR and ePrivacy** require consent before setting non-essential cookies, which matters for any EU-facing product.
+### First-party vs third-party cookies
+
+- **First-party:** Belong to the site in the address bar.
+- **Third-party:** Belong to other domains embedded in the page, such as ads and trackers. Safari and Firefox block them, and Chrome partly does.
+
+### The law
+
+GDPR and ePrivacy require consent before setting non-essential cookies. That matters for any product used in the EU.
 
 ## 8.4 Same-origin policy and CORS
 
-An **origin** is scheme + host + port. The **same-origin policy** stops a page's JavaScript from reading responses from a different origin.
+- **Origin:** Scheme, host and port together. `https://app.example.com:443` and `https://api.example.com:443` are different origins.
+- **Same-origin policy:** A page's JavaScript can't read responses from a different origin.
 
-**CORS** (Cross-Origin Resource Sharing) lets a server opt in. The server returns `Access-Control-Allow-Origin: https://app.example.com`. For non-simple requests (methods like `PUT`/`DELETE`, custom headers, JSON content type), the browser first sends a **preflight** `OPTIONS` request. To send cookies cross-origin, the client uses `credentials: 'include'` and the server must return `Access-Control-Allow-Credentials: true` with a specific origin, never `*`.
+### The problem it prevents
 
-CORS is enforced by the browser to protect users. It is not a server-side security control: curl and Postman ignore it. A CORS error is fixed on the server (or with a dev proxy), not in React.
+- You are logged in to your bank. You visit an evil site.
+- Without this rule, the evil site's JavaScript could call your bank's API with your cookies and read your balance.
+
+### CORS: the server opts in
+
+CORS (Cross-Origin Resource Sharing) lets a server say which other origins may read its responses.
+
+- **The allow header:** The server returns `Access-Control-Allow-Origin: https://app.example.com`.
+- **Preflight:** For a request that isn't simple, such as `PUT` or `DELETE`, a custom header or a JSON body, the browser first sends an `OPTIONS` request to ask permission.
+- **With cookies:** The client sets `credentials: 'include'`, and the server must return `Access-Control-Allow-Credentials: true` with one specific origin, never `*`.
+
+### The catch
+
+- The browser enforces CORS to protect users. It isn't server security: curl and Postman ignore it.
+- You fix a CORS error on the server, or with a dev proxy, never in React.
 
 ## 8.5 Cross-site scripting (XSS)
 
-XSS is when an attacker gets their JavaScript to run in your page, in your users' sessions. It can steal tokens, read the page, and act as the user.
+Cross-site scripting (XSS) is an attacker getting their JavaScript to run inside your page.
+
+### The problem
+
+- Once it runs in your page, it is your page. It can steal tokens, read everything on screen, and act as the user.
+- It usually gets in through user input that you display without making it safe.
 
 | Type | How it gets in |
 | --- | --- |
@@ -65,14 +106,14 @@ XSS is when an attacker gets their JavaScript to run in your page, in your users
 | Reflected | Input in a URL echoed back in the response |
 | DOM-based | Client JS writes untrusted data into the DOM (`innerHTML`, `location.hash`) |
 
-**Prevention**
+### The fix: layers of defence
 
-- Output encoding: React escapes values in JSX by default. That protects you unless you bypass it.
-- Dangerous spots in React: `dangerouslySetInnerHTML`, `href={userInput}` (allows `javascript:` URLs), `ref.current.innerHTML`, `eval`, `new Function`, third-party scripts.
-- Sanitise any HTML you must render with **DOMPurify**. Validate URLs to allow only `http:` and `https:`.
-- **Content Security Policy** header restricts where scripts may load from and blocks inline scripts: `Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-r4nd0m'; object-src 'none'; base-uri 'self'`.
-- `HttpOnly` cookies so a successful XSS cannot steal the session.
-- Trusted Types in Chrome to lock down DOM sinks.
+- **Escape output:** React escapes values in JSX by default, so `<script>` shows as text. That protects you unless you bypass it.
+- **Know the bypasses in React:** `dangerouslySetInnerHTML`, `href={userInput}` (which allows `javascript:` URLs), `ref.current.innerHTML`, `eval`, `new Function`, and third-party scripts.
+- **Sanitise HTML you must render** with DOMPurify. Allow only `http:` and `https:` URLs.
+- **Content Security Policy (CSP):** A header that says where scripts may load from and blocks inline scripts, for example `Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-r4nd0m'; object-src 'none'; base-uri 'self'`.
+- **`HttpOnly` cookies:** Even if XSS gets in, it can't read the session cookie.
+- **Trusted Types (Chrome):** Blocks raw strings from reaching dangerous DOM APIs such as `innerHTML`.
 
 ```jsx
 // Unsafe
@@ -83,9 +124,24 @@ XSS is when an attacker gets their JavaScript to run in your page, in your users
 
 ## 8.6 Cross-site request forgery (CSRF)
 
-CSRF tricks a logged-in user's browser into sending a request to your site from another site. The browser attaches cookies automatically, so the server thinks the user meant it. XSS runs code in your site; CSRF abuses the user's cookies from another site.
+Cross-site request forgery (CSRF) tricks your logged-in browser into sending a request you didn't mean to send.
 
-**Prevention**: `SameSite=Lax` or `Strict` cookies, anti-CSRF tokens (synchroniser token or double-submit cookie), checking `Origin`/`Referer` headers, and never changing state with `GET` requests. APIs that use `Authorization: Bearer` headers instead of cookies are not exposed to classic CSRF, but are more exposed to token theft through XSS.
+### The problem
+
+- You are logged in to your bank. An evil site contains a hidden form that posts to `bank.com/transfer`.
+- Your browser attaches your bank cookies automatically, so the bank thinks you sent it.
+- **XSS vs CSRF:** XSS runs the attacker's code inside your site. CSRF stays on the attacker's site and abuses your cookies.
+
+### The fix
+
+- **`SameSite=Lax` or `Strict` cookies:** The browser doesn't send them on cross-site posts.
+- **Anti-CSRF tokens:** A secret value the real page includes in every form, which an evil site can't know.
+- **Check the `Origin` or `Referer` header** on the server.
+- **Never change data with a `GET` request.**
+
+### The trade-off with tokens
+
+APIs that use an `Authorization: Bearer` header instead of cookies aren't exposed to classic CSRF, because nothing is sent automatically. But the token has to live somewhere JavaScript can read it, so XSS can steal it.
 
 ## 8.7 Other attacks and defences
 
@@ -98,13 +154,20 @@ CSRF tricks a logged-in user's browser into sending a request to your site from 
 
 ## 8.8 Authentication on the frontend
 
+The question is where to keep proof that the user is logged in. The trade-off is between XSS, which can read anything JavaScript can read, and CSRF, which abuses anything sent automatically.
+
 | Approach | Storage | Pros | Cons |
 | --- | --- | --- | --- |
 | Session cookie | `HttpOnly`, `Secure`, `SameSite` cookie | Not readable by JS, simple | Needs CSRF protection, harder cross-domain |
 | JWT in memory + refresh token in `HttpOnly` cookie | Access token in a JS variable, refresh in cookie | Safer than `localStorage`, works for APIs | Token refresh logic |
 | JWT in `localStorage` | `localStorage` | Easy | Any XSS steals it; avoid |
 
-Also know: OAuth 2.0 with **Authorization Code + PKCE** for SPAs, OpenID Connect for identity, the backend-for-frontend (BFF) pattern, and silent token refresh with a single in-flight refresh request.
+### Also know
+
+- **OAuth 2.0 Authorization Code with PKCE:** The safe login flow for SPAs. PKCE stops a stolen login code from being usable.
+- **OpenID Connect:** Adds "who is this user" on top of OAuth.
+- **The BFF pattern:** A small server holds the tokens, and the browser only gets an `HttpOnly` session cookie.
+- **Silent refresh:** Get a new access token in the background before the old one expires, with only one refresh request in flight at a time.
 
 ## 8.9 HTTP and caching
 
@@ -118,16 +181,16 @@ Also know: OAuth 2.0 with **Authorization Code + PKCE** for SPAs, OpenID Connect
 
 ## 8.10 Interview questions with model answers
 
-1. **What happens when you type a URL and press Enter?** See 8.1.
-2. **Cookies vs `localStorage` vs `sessionStorage`?** See 8.2.
-3. **What do `HttpOnly`, `Secure` and `SameSite` do?** See 8.3.
-4. **What is CORS and how do you fix a CORS error?** See 8.4.
-5. **What is XSS and how does React help?** See 8.5. React escapes JSX output; the risk is bypassing it.
+1. **What happens when you type a URL and press Enter?** Cache check, DNS lookup, TCP and TLS handshakes, HTTP request, then the browser parses HTML and CSS, builds the render tree, and does layout, paint and composite.
+2. **Cookies vs `localStorage` vs `sessionStorage`?** Cookies are small and sent to the server on every request. `localStorage` stays until cleared. `sessionStorage` is cleared when the tab closes. Neither storage is sent to the server.
+3. **What do `HttpOnly`, `Secure` and `SameSite` do?** `HttpOnly` hides the cookie from JavaScript. `Secure` sends it only over HTTPS. `SameSite` controls whether it is sent on cross-site requests.
+4. **What is CORS and how do you fix a CORS error?** A way for a server to let other origins read its responses. Fix the error on the server by returning the right `Access-Control-Allow-*` headers.
+5. **What is XSS and how does React help?** An attacker's script running in your page. React escapes JSX output by default. The risk is bypassing it, for example with `dangerouslySetInnerHTML`.
 6. **XSS vs CSRF?** XSS runs attacker code in your page; CSRF forges requests using the victim's cookies.
 7. **Where should you store a JWT?** Ideally not in `localStorage`. Access token in memory, refresh token in an `HttpOnly` cookie, or use session cookies.
 8. **What is Content Security Policy?** A header that restricts script, style and frame sources.
 9. **What is a preflight request?** An `OPTIONS` request the browser sends before a non-simple cross-origin request.
-10. **What is the critical rendering path?** See 8.1.
+10. **What is the critical rendering path?** The steps from HTML and CSS to the first pixels: DOM, CSSOM, render tree, layout, paint and composite.
 11. **Reflow vs repaint?** Layout recalculation vs repainting pixels; reflow is more expensive.
 12. **What is a service worker?** A background script that intercepts network requests for offline and caching.
 13. **401 vs 403?** Not authenticated vs authenticated but not allowed.

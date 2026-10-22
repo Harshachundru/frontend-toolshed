@@ -1,8 +1,19 @@
 # 9. Performance optimisation
 
-The answer interviewers want is a process, not a list of tricks: **measure, find the bottleneck, fix the biggest one, measure again**. Optimising without measuring is the most common mistake candidates describe.
+Performance work means making a page load faster and react faster to the user.
+
+The answer interviewers want is a process, not a list of tricks:
+
+1. **Measure:** Get real numbers before you change anything.
+2. **Find the bottleneck:** The one thing that costs the most.
+3. **Fix the biggest one.**
+4. **Measure again:** Prove it helped.
+
+Optimising without measuring is the most common mistake candidates describe.
 
 ## 9.1 Core Web Vitals
+
+Core Web Vitals are three scores Google uses to judge how a page feels to real users. The [core concepts page](/core-concepts#_2-core-web-vitals) explains each one in detail.
 
 | Metric | Measures | Good | Common causes when poor |
 | --- | --- | --- | --- |
@@ -10,11 +21,23 @@ The answer interviewers want is a process, not a list of tricks: **measure, find
 | INP (Interaction to Next Paint) | Responsiveness to clicks, taps, keys | 200 ms or less | Long JS tasks, heavy re-renders, large DOM |
 | CLS (Cumulative Layout Shift) | Visual stability | 0.1 or less | Images without size, late ads or banners, web fonts swapping |
 
-INP replaced FID in March 2024. Other useful metrics: TTFB (server response), FCP (first paint), TBT (total blocking time, a lab proxy for INP).
+INP replaced FID in March 2024.
 
-**Lab vs field data**: Lighthouse and WebPageTest run in a controlled lab; real-user monitoring (RUM) from the `web-vitals` library, Chrome UX Report, Sentry or Datadog shows what users actually experience. Decisions should follow field data.
+### Other metrics worth naming
+
+- **TTFB (Time to First Byte):** How long the server takes to start replying.
+- **FCP (First Contentful Paint):** When anything at all first appears.
+- **TBT (Total Blocking Time):** How long the main thread was blocked during load. A lab stand-in for INP.
+
+### Lab data vs field data
+
+- **Lab data:** Lighthouse and WebPageTest load the page on one controlled machine. Good for debugging, but it isn't your users.
+- **Field data:** Real-user monitoring (RUM) collects scores from real devices and networks, through the `web-vitals` library, the Chrome UX Report, Sentry or Datadog.
+- **The rule:** Make decisions from field data.
 
 ## 9.2 Loading performance
+
+Loading performance is how fast the first view appears. The problem is almost always too many bytes, or bytes that arrive in the wrong order.
 
 - **Code splitting**: split by route with `React.lazy` and dynamic `import()`; load heavy widgets (charts, editors, maps) on demand.
 - **Bundle size**: analyse with `vite-bundle-visualizer` or `webpack-bundle-analyzer`. Replace heavy libraries (moment with date-fns or `Intl`), import only what you use, and rely on tree shaking with ES modules.
@@ -26,6 +49,15 @@ INP replaced FID in March 2024. Other useful metrics: TTFB (server response), FC
 
 ## 9.3 Runtime performance
 
+Runtime performance is how smoothly the page responds after it has loaded.
+
+### The problem: the main thread is busy
+
+- The browser runs your JavaScript, handles clicks and paints frames on one main thread.
+- A task longer than 50 ms (a long task) blocks everything else, so clicks feel laggy.
+
+### The fixes
+
 - Break up **long tasks** (over 50 ms) with `scheduler.yield()`, `setTimeout` chunks, or move work to a **Web Worker**.
 - **Debounce** search input and **throttle** scroll and resize handlers.
 - Avoid **layout thrashing**: batch DOM reads, then writes; use `requestAnimationFrame` for visual updates.
@@ -35,7 +67,16 @@ INP replaced FID in March 2024. Other useful metrics: TTFB (server response), FC
 
 ## 9.4 React performance
 
-First find the problem with the **React DevTools Profiler** ("Highlight updates" and flame graphs) and Chrome's Performance panel.
+### The problem: renders that don't need to happen
+
+- When state changes, React re-renders that component and all its children.
+- Usually that is cheap. It becomes slow when the tree is large, or a child does heavy work.
+
+### Find it before you fix it
+
+Use the **React DevTools Profiler** ("Highlight updates" and flame graphs) and Chrome's Performance panel to find the slow component.
+
+### The fixes
 
 | Technique | Use when | Watch out |
 | --- | --- | --- |
@@ -64,16 +105,30 @@ function List({ items }) {
 
 ## 9.5 Perceived performance
 
-Skeleton screens instead of spinners, optimistic updates, prefetching data on hover or when a link enters the viewport, keeping previous data while loading the next page, and instant feedback on every click.
+Perceived performance is how fast the app feels, which can improve even when the real timings don't.
+
+- **Skeleton screens:** Grey outlines of the coming content, instead of a spinner.
+- **Optimistic updates:** Show the result of a click straight away, and roll back if the server says no.
+- **Prefetching:** Fetch data when the user hovers a link, or when the link scrolls into view.
+- **Keep the old data:** Leave the previous page visible while the next one loads.
+- **Instant feedback:** Every click changes something on screen at once.
 
 ## 9.6 Performance budgets and monitoring
 
-Set budgets (for example, initial JS under 200 KB compressed, LCP under 2.5 s at the 75th percentile) and enforce them in CI with Lighthouse CI or `size-limit`. Track Web Vitals from real users on a dashboard, alert on regressions, and review it after each release.
+### The problem: speed slowly leaks away
+
+Each release adds a little JavaScript. Nobody notices one change, but a year later the page is twice as slow.
+
+### The fix: a budget the build enforces
+
+- **Set budgets:** For example, initial JavaScript under 200 KB compressed, and LCP under 2.5 s at the 75th percentile.
+- **Enforce them in CI:** Lighthouse CI or `size-limit` fails the build when a budget is broken.
+- **Watch real users:** Track Web Vitals on a dashboard, alert on regressions, and review it after each release.
 
 ## 9.7 Interview questions with model answers
 
 1. **How would you improve a slow React app?** Measure with Profiler and Lighthouse; then target the bottleneck: bundle size, network waterfalls, unnecessary re-renders, large lists.
-2. **What are Core Web Vitals?** See 9.1.
+2. **What are Core Web Vitals?** Three scores for real-user experience: LCP for loading, INP for responsiveness, and CLS for visual stability.
 3. **When should you use `React.memo`, `useMemo`, `useCallback`?** Only after profiling shows costly re-renders, and together (memo is useless with unstable props).
 4. **What is code splitting?** Splitting the bundle so users download only what the current route needs.
 5. **What is tree shaking?** Removing unused exports at build time; needs ES modules and side-effect-free code.
